@@ -1,3 +1,6 @@
+[![NPM Package][npm]][npm-url]
+[![Build Size][build-size]][build-size-url]
+
 # ParsECS
 
 Parsecs is a tiny and pure [Entity Component System](https://en.wikipedia.org/wiki/Entity_component_system) (ECS) library written in TypeScript.
@@ -71,3 +74,8 @@ createApp<Components, Resources>({ getDelta: createClock() })
   // run the app!
   .run();
 ```
+
+[npm]: https://img.shields.io/npm/v/parsecs
+[npm-url]: https://www.npmjs.com/package/parsecs
+[build-size]: https://badgen.net/bundlephobia/minzip/parsecs
+[build-size-url]: https://bundlephobia.com/result?p=parsecs
