@@ -1,0 +1,29 @@
+{
+  "name": "parsecs",
+  "version": "0.1.0",
+  "description": "Pure ECS library",
+  "module": "dist/parsecs.js",
+  "typings": "dist/parsecs.d.ts",
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "build": "tsc"
+  },
+  "devDependencies": {
+    "typescript": "^4.4.4"
+  },
+  "keywords": [
+    "ECS",
+    "Entity",
+    "Component",
+    "System"
+  ],
+  "author": "Nathan Soufflet",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/nathsou/parsecs"
+  }
+}
