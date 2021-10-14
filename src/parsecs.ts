@@ -36,8 +36,6 @@ type MapComponentTypes<U, C> =
   [C & { type: H }, ...MapComponentTypes<TL, C>] :
   U extends [infer T] ? [C & { type: T }, Entity] : [Entity];
 
-export type ComponentArg<C extends Component<string>, R extends object = {}> = C | ((entity: Entity, app: App<C, R>) => C);
-
 type KeepStrings<T> = T extends string ? T : never;
 
 export type ComponentTypes<C extends Record<string, object>> = {
@@ -51,6 +49,7 @@ export class App<C extends Component<string>, R extends object = {}> {
   private systems: System<C, R>[];
   private nextId = 0;
   public resources: R;
+  private running = false;
 
   constructor(resources: R) {
     this.resources = resources;
@@ -60,16 +59,12 @@ export class App<C extends Component<string>, R extends object = {}> {
     this.systems = [];
   }
 
-  public addEntity(components: ComponentArg<C>[]) {
+  public addEntity(components: C[]) {
     const id = this.nextId++;
     this.entities.add(id);
 
     for (const comp of components) {
-      if (typeof comp === 'function') {
-        this.addComponent(id, comp(id, this));
-      } else {
-        this.addComponent(id, comp);
-      }
+      this.addComponent(id, comp);
     }
 
     const actions = {
@@ -126,7 +121,22 @@ export class App<C extends Component<string>, R extends object = {}> {
     return this;
   }
 
-  public getEntities = () => this.entities[Symbol.iterator];
+  public removeSystem(system: System<C, R>, startup = false): App<C, R> {
+    const systems = startup ? this.startupSystems : this.systems;
+
+    for (let i = 0; i < systems.length; i++) {
+      if (systems[i] === system) {
+        systems.splice(i, 1);
+        break;
+      }
+    }
+
+    return this;
+  }
+
+  public getEntities(): IterableIterator<Entity> {
+    return this.entities[Symbol.iterator]();
+  }
 
   private storeQueryTuple<
     H extends C['type'],
@@ -171,20 +181,31 @@ export class App<C extends Component<string>, R extends object = {}> {
     }
   }
 
-  private step = () => {
+  public step() {
     for (let i = 0; i < this.systems.length; i++) {
       this.systems[i](this);
     }
+  }
 
-    requestAnimationFrame(this.step);
+  private loop = () => {
+    if (this.running) {
+      this.step();
+      requestAnimationFrame(this.loop);
+    }
   };
 
   public run(): App<C, R> {
+    this.running = true;
     this.startupSystems.forEach(system => {
       system(this);
     });
 
-    this.step();
+    this.loop();
+    return this;
+  }
+
+  public stop(): App<C, R> {
+    this.running = false;
     return this;
   }
 }
