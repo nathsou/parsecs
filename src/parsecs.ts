@@ -25,9 +25,9 @@ export const combineSystems = <
   R extends object = {}
 >(...systems: System<C, R>[]): System<C, R> => {
   return app => {
-    systems.forEach(system => {
-      system(app);
-    });
+    for (let i = 0; i < systems.length; i++) {
+      systems[i](app);
+    }
   };
 };
 
@@ -136,6 +136,21 @@ export class App<C extends Component<string>, R extends object = {}> {
 
   public getEntities(): IterableIterator<Entity> {
     return this.entities[Symbol.iterator]();
+  }
+
+  public clearEntities(): void {
+    this.entities.clear();
+    this.components.clear();
+  }
+
+  public clearSystems(): void {
+    this.systems = [];
+    this.startupSystems = [];
+  }
+
+  public clear(): void {
+    this.clearEntities();
+    this.clearSystems();
   }
 
   private storeQueryTuple<
