@@ -1,6 +1,6 @@
 {
   "name": "parsecs",
-  "version": "0.1.3",
+  "version": "0.2.0",
   "description": "Pure ECS library",
   "module": "dist/parsecs.js",
   "typings": "dist/parsecs.d.ts",

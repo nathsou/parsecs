@@ -31,7 +31,28 @@ export const combineSystems = <
   };
 };
 
-type MapComponentTypes<U, C> =
+export const cacheQuery = <
+  C extends Component<string>,
+  H extends C['type'],
+  T extends C['type'][]
+>(query: readonly [H, ...T]) => {
+  let cache: MapComponentTypes<[H, ...T], C>[] | null = null;
+
+  return {
+    invalidate() {
+      cache = null;
+    },
+    get(app: App<C>) {
+      if (cache === null) {
+        cache = app.query(query);
+      }
+
+      return cache;
+    }
+  };
+};
+
+export type MapComponentTypes<U, C> =
   U extends [infer H, ...infer TL] ?
   [C & { type: H }, ...MapComponentTypes<TL, C>] :
   U extends [infer T] ? [C & { type: T }, Entity] : [Entity];
@@ -59,7 +80,7 @@ export class App<C extends Component<string>, R extends object = {}> {
     this.systems = [];
   }
 
-  public addEntity(components: C[]) {
+  public addEntity(components: C[] = []) {
     const id = this.nextId++;
     this.entities.add(id);
 
@@ -154,29 +175,43 @@ export class App<C extends Component<string>, R extends object = {}> {
   }
 
   private storeQueryTuple<
-    H extends C['type'],
-    T extends C['type'][]
-  >(head: H, tail: T, entity: Entity, tuple: any[]): void {
-    tuple[0] = this.getComponent(entity, head);
+    T extends readonly C['type'][]
+  >(types: T, entity: Entity, tuple: any[]): void {
+    tuple[0] = this.getComponent(entity, types[0]);
 
-    for (let i = 0; i < tail.length; i++) {
-      const type = tail[i];
-      tuple[i + 1] = this.getComponent(entity, type);
+    for (let i = 1; i < types.length; i++) {
+      const type = types[i];
+      tuple[i] = this.getComponent(entity, type);
     }
 
-    tuple[tail.length + 1] = entity;
+    tuple[types.length] = entity;
+  }
+
+  private checkRemainingComponents(entity: Entity, types: readonly C['type'][]): boolean {
+    // start at 1 since entiy has a component of type type[0]
+    for (let i = 1; i < types.length; i++) {
+      if (!this.hasComponent(entity, types[i])) {
+        return false;
+      }
+    }
+
+    return true;
   }
 
   public query<
     H extends C['type'],
     T extends C['type'][]
-  >(head: H, ...tail: T): MapComponentTypes<[H, ...T], C>[] {
+  >(types: readonly [H, ...T]): MapComponentTypes<[H, ...T], C>[] {
     const tuples: any[] = [];
-    for (const entity of this.components.get(head)?.keys() ?? []) {
-      if (tail.every(type => this.hasComponent(entity, type))) {
-        const tuple = new Array(tail.length + 2);
-        this.storeQueryTuple(head, tail, entity, tuple);
-        tuples.push(tuple);
+    const entities = this.components.get(types[0])?.keys();
+
+    if (entities) {
+      for (const entity of entities) {
+        if (this.checkRemainingComponents(entity, types)) {
+          const tuple = new Array(types.length + 1);
+          this.storeQueryTuple(types, entity, tuple);
+          tuples.push(tuple);
+        }
       }
     }
 
@@ -186,12 +221,16 @@ export class App<C extends Component<string>, R extends object = {}> {
   public *queryIter<
     H extends C['type'],
     T extends C['type'][]
-  >(head: H, ...tail: T): IterableIterator<MapComponentTypes<[H, ...T], C>> {
-    const tuple = new Array(tail.length + 2);
-    for (const entity of this.components.get(head)?.keys() ?? []) {
-      if (tail.every(type => this.hasComponent(entity, type))) {
-        this.storeQueryTuple(head, tail, entity, tuple);
-        yield tuple as MapComponentTypes<[H, ...T], C>;
+  >(types: readonly [H, ...T]): IterableIterator<MapComponentTypes<[H, ...T], C>> {
+    const tuple = new Array(types.length + 1);
+    const entities = this.components.get(types[0])?.keys();
+
+    if (entities) {
+      for (const entity of entities) {
+        if (this.checkRemainingComponents(entity, types)) {
+          this.storeQueryTuple(types, entity, tuple);
+          yield tuple as MapComponentTypes<[H, ...T], C>;
+        }
       }
     }
   }
